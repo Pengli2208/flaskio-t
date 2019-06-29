@@ -4,6 +4,8 @@ from flask import Flask, render_template, session, request, \
     copy_current_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
+import sqlite3
+from flask import request, jsonify
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
@@ -16,6 +18,19 @@ socketio = SocketIO(app, async_mode=async_mode)
 thread = None
 thread_lock = Lock()
 
+def get_db():
+    db = sqlite3.connect('mydb.db')
+    db.row_factory = sqlite3.Row
+    return db
+
+
+def query_db(query, args=(), one=False):
+    db = get_db()
+    cur = db.execute(query, args)
+    db.commit()
+    rv = cur.fetchall()
+    db.close()
+    return (rv[0] if rv else None) if one else rv
 
 def background_thread():
     """Example of how to send server generated events to clients."""
@@ -34,6 +49,24 @@ def PyHtml(content):
 @app.route('/')
 def index():
     return render_template('index.html', async_mode=socketio.async_mode)
+
+@app.route("/cpu", methods=["POST"])
+def cpu():
+    if request.method == "POST":
+        id1 = query_db("SELECT MAX(id) FROM cpu", args=())
+        reqId = 0
+        if int(id1[0][0]) < 30:
+            reqId = int(request.form['id'])
+        else:
+            reqId = int(id1[0][0]) - 30
+        res = query_db("SELECT * FROM cpu WHERE id>=(?)", args=(reqId+1,))
+        #返回1+个数据    
+    return jsonify(insert_time = [x[1] for x in res],
+                   cpu1 = [x[2] for x in res],
+                   cpu2 = [x[3] for x in res], 
+                   cpu3 = [x[4] for x in res],
+                   cpu4 = [x[5] for x in res])
+    # 返回json格式
 
 
 @socketio.on('my_event', namespace='/test')
@@ -145,6 +178,7 @@ def test_connect():
 @socketio.on('disconnect', namespace='/test')
 def test_disconnect():
     print('Client disconnected', request.sid)
+
 
 
 if __name__ == '__main__':
