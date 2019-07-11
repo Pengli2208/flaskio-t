@@ -1,329 +1,889 @@
 <!DOCTYPE HTML>
 <html>
-<head>
-    <title>Device Connection Test</title>
-    <script src="//code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
-    <script src="{{ url_for('static', filename='jquery-3.1.1.js') }}"></script>
-    <script src="{{ url_for('static', filename='echarts.js') }}"></script>    
-    <script type="text/javascript" charset="utf-8">
-        $(document).ready(function() {
-            // Use a "/test" namespace.
-            // An application can open a connection on multiple namespaces, and
-            // Socket.IO will multiplex all those connections on a single
-            // physical channel. If you don't care about multiple channels, you
-            // can set the namespace to an empty string.
-            namespace = '/test';
+	<head>
+		<title>Device Connection Test</title>
+		<script src="//code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+		 crossorigin="anonymous"></script>
+		<script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I="
+		 crossorigin="anonymous"></script>
+		<script src="{{ url_for('static', filename='jquery-3.1.1.js') }}"></script>
+		<script src="{{ url_for('static', filename='echarts.js') }}"></script>
+		<script type="text/javascript" src="https://api.map.baidu.com/api?v=2.0&ak=1959c30b0e301beba94154a46326b2f7"></script>
+		<script type="text/javascript" src="https://api.map.baidu.com/library/Heatmap/2.0/src/Heatmap_min.js"></script>
+		<script type="text/javascript" charset="utf-8">
+			$(document).ready(function() {
+				// Use a "/test" namespace.
+				// An application can open a connection on multiple namespaces, and
+				// Socket.IO will multiplex all those connections on a single
+				// physical channel. If you don't care about multiple channels, you
+				// can set the namespace to an empty string.
+				namespace = '/test';
 
-            // Connect to the Socket.IO server.
-            // The connection URL has the following format, relative to the current page:
-            //     http[s]://<domain>:<port>[/<namespace>]
-            var socket = io(namespace);
+				// Connect to the Socket.IO server.
+				// The connection URL has the following format, relative to the current page:
+				//     http[s]://<domain>:<port>[/<namespace>]
+				var socket = io(namespace);
 
-            // Event handler for new connections.
-            // The callback function is invoked when a connection with the
-            // server is established.
-            socket.on('connect', function() {
-                socket.emit('my_event', {data: 'I\'m connected!'});
-            });
+				// Event handler for new connections.
+				// The callback function is invoked when a connection with the
+				// server is established.
+				socket.on('connect', function() {
+					socket.emit('my_event', {
+						data: 'I\'m connected!\n'
+					});
+				});
 
-            // Event handler for server sent data.
-            // The callback function is invoked whenever the server emits data
-            // to the client. The data is then displayed in the "Received"
-            // section of the page.
-            socket.on('my_response', function(msg, cb) {
-		//if (msg.response.length>= 1)
-                	$('#log').append("<b>"+msg.port+" #</b> " + msg.response);
-			//$('#log2').append(msg.response);
-                if (cb)
-                    cb();
-            });
-	    socket.on('my_send', function(msg, cb) {
-		//if (msg.response.length>= 1)
-                //	$('#log').append(msg.response);
-			var a = new Date();
-			var b = a.toLocaleTimeString();
-		        var c = a.toLocaleDateString();
-			$('#log2').append(c+" " +b+ "  "+msg.port+" # " + msg.data+"\n");
-                //if (cb)s
-                //    cb();
-            });
+				// Event handler for server sent data.
+				// The callback function is invoked whenever the server emits data
+				// to the client. The data is then displayed in the "Received"
+				// section of the page.
+				socket.on('my_response', function(msg, cb) {
+					//if (msg.response.length>= 1)
+					$('#log').append("<b>" + msg.port + " #</b> " + msg.response);
+					//$('#log2').append(msg.response);
+					if (cb)
+						cb();
+				});
+				socket.on('my_send', function(msg, cb) {
+					//if (msg.response.length>= 1)
+					//	$('#log').append(msg.response);
+					var a = new Date();
+					var b = a.toLocaleTimeString();
+					var c = a.toLocaleDateString();
+					$('#log2').append(c + " " + b + "  " + msg.port + " # " + msg.data + "\n");
+					//if (cb)s
+					//    cb();
+				});
 
-            // Interval function that tests message latency by sending a "ping"
-            // message. The server then responds with a "pong" message and the
-            // round trip time is measured.
-            var ping_pong_times = [];
-            var start_time;
-            window.setInterval(function() {
-                start_time = (new Date).getTime();
-                socket.emit('my_ping');
-            }, 5000);
+				// Interval function that tests message latency by sending a "ping"
+				// message. The server then responds with a "pong" message and the
+				// round trip time is measured.
+				var ping_pong_times = [];
+				var start_time;
+				window.setInterval(function() {
+					start_time = (new Date).getTime();
+					socket.emit('my_ping');
+				}, 5000);
 
-            // Handler for the "pong" message. When the pong is received, the
-            // time from the ping is stored, and the average of the last 30
-            // samples is average and displayed.
-            socket.on('my_pong', function() {
-                var latency = (new Date).getTime() - start_time;
-                ping_pong_times.push(latency);
-                ping_pong_times = ping_pong_times.slice(-30); // keep last 30 samples
-                var sum = 0;
-                for (var i = 0; i < ping_pong_times.length; i++)
-                    sum += ping_pong_times[i];
-                $('#ping-pong').text(Math.round(10 * sum / ping_pong_times.length) / 10);
-            });
+				// Handler for the "pong" message. When the pong is received, the
+				// time from the ping is stored, and the average of the last 30
+				// samples is average and displayed.
+				socket.on('my_pong', function() {
+					var latency = (new Date).getTime() - start_time;
+					ping_pong_times.push(latency);
+					ping_pong_times = ping_pong_times.slice(-30); // keep last 30 samples
+					var sum = 0;
+					for (var i = 0; i < ping_pong_times.length; i++)
+						sum += ping_pong_times[i];
+					$('#ping-pong').text(Math.round(10 * sum / ping_pong_times.length) / 10);
+				});
 
-            // Handlers for the different forms in the page.
-            // These accept data from the user and send it to the server in a
-            // variety of ways
-            $('form#emit').submit(function(event) {
-                socket.emit('my_event', {data: $('#emit_data').val()});
-                return false;
-            });
-            $('form#broadcast').submit(function(event) {
-                socket.emit('my_broadcast_event', {data: $('#broadcast_data').val(),response: $('#broadcast_data').val()});
-                return false;
-            });
-            $('form#join').submit(function(event) {
-                socket.emit('join', {room: $('#join_room').val()});
-                return false;
-            });
-            $('form#leave').submit(function(event) {
-                socket.emit('leave', {room: $('#leave_room').val()});
-                return false;
-            });
-            $('form#send_room').submit(function(event) {
-                socket.emit('my_send_event', {port: $('#room_name').val(), room: $('#room_name').val(), data: $('#room_data').val(), response: $('#room_data').val()});
-                return false;
-            });
-            $('form#close').submit(function(event) {
-                socket.emit('close_room', {room: $('#close_room').val()});
-                return false;
-            });
-            $('form#clear').submit(function(event) {
-                $('#log').text("");
-                return false;
-            });
-        });
-    </script>
-    <style>
-	p {line-height:15px;}
-	pre{ 
-	white-space:pre-wrap;/*css-3*/ 
-	white-space:-moz-pre-wrap;/*Mozilla,since1999*/ 
-	white-space:-pre-wrap;/*Opera4-6*/ 
-	white-space:-o-pre-wrap;/*Opera7*/ 
-	word-wrap:break-word;/*InternetExplorer5.5+*/　　} 
+				// Handlers for the different forms in the page.
+				// These accept data from the user and send it to the server in a
+				// variety of ways
+				$('form#emit').submit(function(event) {
+					socket.emit('my_event', {
+						data: $('#emit_data').val()
+					});
+					return false;
+				});
+				$('form#broadcast').submit(function(event) {
+					socket.emit('my_broadcast_event', {
+						data: $('#broadcast_data').val(),
+						response: $('#broadcast_data').val()
+					});
+					return false;
+				});
+				$('form#join').submit(function(event) {
+					var src = document.activeElement;
+					if (src.name == 'join') {
+						socket.emit('join', {
+							room: $('#join_room').val()
+						});
+					} else {
+						socket.emit('leave', {
+							room: $('#join_room').val()
+						});
+					}
+					return false;
+				});
+				$('form#send_room').submit(function(event) {
+					socket.emit('my_send_event', {
+						port: $('#room_name').val(),
+						room: $('#room_name').val(),
+						data: $('#room_data').val(),
+						response: $('#room_data').val()
+					});
+					return false;
+				});
+				$('form#close').submit(function(event) {
+					socket.emit('close_room', {
+						room: $('#close_room').val()
+					});
+					return false;
+				});
+				$('form#clear').submit(function(event) {
+					var src = document.activeElement;
+					if (src.name == 'clear') {
+						$('#log').text("");
+					} else if (src.name == 'clrSend') {
+						$('#log2').text("");
+					} else {
+						socket.emit('leaveall', {
+							room: "leave all"
+						});
+					}
 
-	.inputTyle1
-	{
-	    width:200px;
-            height:40px;
-	    font-size:28px;
-	    margin-top:10px;
-	    margin-left:20px;
-	}
-	.inputTyle2
-	{
-	    width:350px;
-            height:40px;
-	    font-size:28px;
-	    margin-top:10px;
-	    margin-left:20px;
-	}
-	.inputTyleB
-	{
-	    width:250px;
-            height:45px;
-	    font-size:28px;
-	    margin-top:10px;
-	    margin-left:20px;
-	}
-	.wrap{
-            min-width:1290px;
-            margin:0 auto;
-        }
-	.box1{
-            float:left;
-	    width:99%;
-            height:340px;
-            overflow:hidden;    
-        }
-	.box2{
-		
-            float: left;
-	    height:200px;
-            width: 99%;
-            overflow:hidden;
-	    color:#FFFFFF;
-	    background:#3c3431;
-	    margin-left:10px;
-	    overflow-y:scroll; 
-	    overflow-x:scroll;
-	    line-height:15px;
-	}
-	.box7{
-            float:left;
-	    width:99%;
-            height:400px;
-            overflow:hidden;
-	    color:#FFFFFF;
-	    background:#3c3431;
-	    margin-left:10px;
-	    overflow-y:scroll; 
-	    overflow-x:scroll;
-	    line-height:15px;  
-        }
+					return false;
+				});
+			});
+		</script>
+		<style>
+			html, body {
+            margin: 5;
+            padding: 5;
+			}
+			p {line-height:15px;}
+			pre{ 
+			white-space:pre-wrap;/*css-3*/ 
+			white-space:-moz-pre-wrap;/*Mozilla,since1999*/ 
+			white-space:-pre-wrap;/*Opera4-6*/ 
+			white-space:-o-pre-wrap;/*Opera7*/ 
+			word-wrap:break-word;/*InternetExplorer5.5+*/　　} 
 
-	.box8{
-            float:left;
-	    width: 99%;
-            height:400px;
-            overflow:hidden;
-	    color:#FFFFFF;
-	    background:#3c3431;
-	    margin-left:10px;
-	    overflow-y:scroll; 
-	    overflow-x:scroll;
-	    line-height:15px;  
-        }
-	.box9{
-        float:left;
-	height:500px;
-	border:1px solid #ccc;
-	padding:10px;
-	overflow:hidden;
-	width: 99%;
-	}
-    </style>
-</head>
-<body>
-    <h1>Device Connection Test</h1>
-    <p>Average ping/pong latency: <b><span id="ping-pong"></span>ms</b></p>
-    <div class=".wrap">
-        <div class="box1">
-	    <h2>Send:</h2>
-	    <form id="join" method="POST" action='#'>
-	        <input type="text" class="inputTyle1" name="join_room" id="join_room" placeholder="Port">
-	        <input type="submit" class="inputTyleB" value="Connect">
-	    </form>
-	    <form id="leave" method="POST" action='#'>
-	        <input type="text" class="inputTyle1" name="leave_room" id="leave_room" placeholder="Port">
-	        <input type="submit" class="inputTyleB" value="Disconnect">
-	    </form>
-	    <form id="send_room" method="POST" action='#'>
-	        <input type="text" class="inputTyle1" name="room_name" id="room_name" placeholder="Port">
-	        <input type="text" class="inputTyle2" name="room_data" id="room_data" placeholder="Command">
-	        <input type="submit" class="inputTyleB" value="Send to">
-	    </form>
-	    <span></span>
-	    <form id="clear" class="inputTyleB" method="POST" action="#">
-	        <input type="submit" class="inputTyleB" value="Clear Content">
-    	    </form>
-        </div>
-        <div class="box2">
-	<pre id="log2"></pre> 
-        </div>
-        <h2>Receive:</h2>
-    
-    	<div class="box7"> <pre id="log"></pre></div>
-	<div id="main" class="box9" ></div>
-	<script type="text/javascript">
-	    //--- 折柱 ---
-	    var myChart = echarts.init(document.getElementById('main'));
-	    
-	    myChart.setOption({
-	        title: {
-	            text: '服务器系统监控'
-	        },
-	        tooltip: {},
-	        legend: {
-	            data:['cpu1','cpu2','cpu3','cpu4']
-	        },
-	        xAxis: {
-	            data: []
-	        },
-	        yAxis: {},
-	        series: [{
-	            name: 'cpu1',
-	            type: 'line',
-	            data: []
-	        },{
-	            name: 'cpu2',
-	            type: 'line',
-	            data: []
-	        },{
-	            name: 'cpu3',
-	            type: 'line',
-	            data: []
-	        },{
-	            name: 'cpu4',
-	            type: 'line',
-	            data: []
-	        }]
-	    });
-	    
-	    
-	    // 六个全局变量：插入时间、cpu1、cpu2、cpu3、cpu4、 哨兵（用于POST）
-	    var insert_time = ["","","","","","","","","",""],
-	        cpu1 = [0,0,0,0,0,0,0,0,0,0],
-	        cpu2 = [0,0,0,0,0,0,0,0,0,0],
-	        cpu3 = [0,0,0,0,0,0,0,0,0,0],
-	        cpu4 = [0,0,0,0,0,0,0,0,0,0],
-	        
-	        lastID = 0; // 哨兵，记录上次数据表中的最后id +1（下次查询只要>=lastID）
-	
-	    
-	    //准备好统一的 callback 函数
-	    var update_mychart = function (data) { //data是json格式的response对象
-	        
-	        myChart.hideLoading(); // 隐藏加载动画
-	        
-	        dataLength = data.insert_time.length; //取回的数据长度
-	        lastID += dataLength; //哨兵，相应增加。
-	        
-	        // 切片是能统一的关键！！
-	        insert_time = insert_time.slice(dataLength).concat(data.insert_time); // 数组，先切片、再拼接
-	        cpu1 = cpu1.slice(dataLength).concat(data.cpu1.map(parseFloat)); //注意map方法
-	        cpu2 = cpu2.slice(dataLength).concat(data.cpu2.map(parseFloat));
-	        cpu3 = cpu3.slice(dataLength).concat(data.cpu3.map(parseFloat));
-	        cpu4 = cpu4.slice(dataLength).concat(data.cpu4.map(parseFloat));
-	        
-	        // 填入数据
-	        myChart.setOption({
-	            xAxis: {
-	                data: insert_time
-	            },
-	            series: [{
-	                name: 'cpu1', // 根据名字对应到相应的系列
-	                data: cpu1
-	            },{
-	                name: 'cpu2',
-	                data: cpu2
-	            },{
-	                name: 'cpu3',
-	                data: cpu3
-	            },{
-	                name: 'cpu4',
-	                data: cpu4
-	            }]
-	        });
-	        
-	        if (dataLength == 0){clearInterval(timeTicket);} //如果取回的数据长度为0,停止ajax
-	    }
-	    
-	    myChart.showLoading(); // 首次显示加载动画
-	    
-	    
-	    // 异步加载数据 （首次，get，显示6个数据）
-	    $.get('/cpu').done(update_mychart);
-	    
-	    
-	    // 异步更新数据 （以后，定时post，取回1个数据）
-	    var timeTicket = setInterval(function () {
-	        $.post('/cpu',{id: lastID}).done(update_mychart);
-	    }, 3000);
-	    
-    	</script>
-    </div>
-</body>
+			.inputTyle1{
+				width:196px;
+				height:43px;
+				font-size:28px;
+				margin-top:10px;
+				margin-left:20px;
+			}
+			.inputTyle2{
+				width:196px;
+				height:43px;
+				font-size:28px;
+				margin-top:10px;
+				margin-left:20px;
+			}
+			.inputTyleB{
+				width:200px;
+				height:45px;
+				font-size:28px;
+				margin-top:10px;
+				margin-left:20px;
+			}
+			.sperate_div2{
+				float:left;
+				width:100%;
+				height:80px;
+				font-size: 48p;
+				text-align: left;
+				color: darkorchid;
+			}
+			.sperate_div{
+				float:left;
+				width:100%;
+				height:60px;
+				font-size: 48p;
+				text-align: center;
+				color: darkorchid;
+			}
+			.wrap{
+				min-width:1400px;
+				margin:0 auto;
+			}
+			.box1{
+				float:left;
+				min-width: 700px;
+				width: calc(50% - 4px);
+				height:245px;
+				overflow:hidden;  
+				border:2px dashed #DC00;
+			}
+			.box2{
+				position: relative;
+				float: left;
+				min-width: 700px;
+				height:245px;
+				width: calc(50% - 4px);
+				overflow:hidden;
+				color:#FFFFFF;
+				background:#3c3431;
+				overflow-y:scroll; 
+				overflow-x:scroll;
+				line-height:15px;
+				border:2px dashed #DC00;
+			}
+			.box7{
+				float:left;
+				width:100%;
+				height:400px;
+				overflow:hidden;
+				color:#FFFFFF;
+				background:#3c3431;
+				margin-left:10px;
+				overflow-y:scroll; 
+				overflow-x:scroll;
+				line-height:15px;  
+			}
+
+			.box8{
+				float:left;
+				width: 100%;
+				min-width: 700px;				height:400px;
+				overflow:hidden;
+				color:#FFFFFF;
+				background:#3c3431;
+				margin-left:10px;
+				overflow-y:scroll; 
+				overflow-x:scroll;
+				line-height:15px;  
+			}
+			.box9{
+				float:left;
+				height:500px;
+				min-width: 700px;
+				border:1px solid #ccc;
+				padding:10px;
+				overflow:hidden;
+				width: 99%;
+			}
+		</style>
+	</head>
+	<body>
+		<div class=".wrap">
+			
+			<div class="sperate_div2"> 
+			<h1>Device Connection Test</h1>
+			<p>Average ping/pong latency: <b><span id="ping-pong"></span>ms</b></p>
+			</div>
+			<div class="sperate_div"> 
+			<h2>Send:</h2>
+			</div>
+			<div class="box1">				
+				<form id="join" method="POST" action='#'>
+					<input type="text" class="inputTyle1" name="join_room" id="join_room" placeholder="4016">
+					<input type="submit" class="inputTyleB" name="join" value="Connect">
+					<input type="submit" class="inputTyleB" name="leave" value="Disconnect">
+				</form>
+				<form id="send_room" method="POST" action='#'>
+					<input type="text" class="inputTyle1" name="room_name" id="room_name" placeholder="4016">
+					<input type="text" class="inputTyle2" name="room_data" id="room_data" placeholder="put 1 1 2 0">
+					<input type="submit" class="inputTyleB" value="Send to">
+				</form>
+				<form id="clear" method="POST" action="#">
+					<input type="submit" class="inputTyleB" name="clear" value="Clear Receive">
+					<input type="submit" class="inputTyleB" name="leaveall" value="Close Connection">
+					<input type="submit" class="inputTyleB" name="clrSend" value="Clear Sent">
+				</form>
+			</div>
+			<div class="box2">
+				<pre id="log2"></pre>
+			</div>
+			<div class="sperate_div"> 
+			<h2>Receive:</h2>
+			</div>
+			
+			<div class="box7">
+				<pre id="log"></pre>
+			</div>
+			<div id="main" class="box9"></div>
+			<script type="text/javascript">
+				//--- 折柱 ---
+				var myChart = echarts.init(document.getElementById('main'));
+
+				myChart.setOption({
+					title: {
+						text: '服务器系统监控'
+					},
+					tooltip: {},
+					legend: {
+						data: ['concentration']
+					},
+					xAxis: {
+						data: []
+					},
+					yAxis: {},
+					series: [{
+						name: 'concentration',
+						type: 'line',
+						data: []
+					}]
+				});
+
+
+				// 六个全局变量：插入时间、cpu1、cpu2、cpu3、cpu4、 哨兵（用于POST）
+				var insert_time = ["", "", "", "", "", "", "", "", "", ""],
+					concentration = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+
+					lastID = 0; // 哨兵，记录上次数据表中的最后id +1（下次查询只要>=lastID）
+
+
+				//准备好统一的 callback 函数
+				var update_mychart = function(data) { //data是json格式的response对象
+
+					myChart.hideLoading(); // 隐藏加载动画
+
+					dataLength = data.insert_time.length; //取回的数据长度
+					lastID += dataLength; //哨兵，相应增加。
+
+					// 切片是能统一的关键！！
+					insert_time = insert_time.slice(dataLength).concat(data.insert_time); // 数组，先切片、再拼接
+					concentration = concentration.slice(dataLength).concat(data.concentration.map(parseFloat)); //注意map方法
+
+					// 填入数据
+					myChart.setOption({
+						xAxis: {
+							data: insert_time
+						},
+						series: [{
+							name: 'concentration', // 根据名字对应到相应的系列
+							data: concentration
+						}]
+					});
+
+					if (dataLength == 0) {
+						clearInterval(timeTicket);
+					} //如果取回的数据长度为0,停止ajax
+				}
+
+				myChart.showLoading(); // 首次显示加载动画
+
+
+				// 异步加载数据 （首次，get，显示6个数据）
+				$.get('/concentration').done(update_mychart);
+
+
+				// 异步更新数据 （以后，定时post，取回1个数据）
+				var timeTicket = setInterval(function() {
+					$.post('/concentration', {
+						id: lastID
+					}).done(update_mychart);
+				}, 3000);
+			</script>
+		</div>
+		<div class="box9" id="mapcontainer">
+			<script type="text/javascript">
+				var map = new BMap.Map("mapcontainer"); // 创建地图实例
+				var point = new BMap.Point(121.36435, 31.232913);
+				map.centerAndZoom(point, 15); // 初始化地图，设置中心点坐标和地图级别
+				map.enableScrollWheelZoom(); // 允许滚轮缩放
+
+				var points = [{
+						"lng": 116.418261,
+						"lat": 39.921984,
+						"count": 50
+					},
+					{
+						"lng": 116.423332,
+						"lat": 39.916532,
+						"count": 51
+					},
+					{
+						"lng": 116.419787,
+						"lat": 39.930658,
+						"count": 15
+					},
+					{
+						"lng": 116.418455,
+						"lat": 39.920921,
+						"count": 40
+					},
+					{
+						"lng": 116.418843,
+						"lat": 39.915516,
+						"count": 100
+					},
+					{
+						"lng": 116.42546,
+						"lat": 39.918503,
+						"count": 6
+					},
+					{
+						"lng": 116.423289,
+						"lat": 39.919989,
+						"count": 18
+					},
+					{
+						"lng": 116.418162,
+						"lat": 39.915051,
+						"count": 80
+					},
+					{
+						"lng": 116.422039,
+						"lat": 39.91782,
+						"count": 11
+					},
+					{
+						"lng": 116.41387,
+						"lat": 39.917253,
+						"count": 7
+					},
+					{
+						"lng": 116.41773,
+						"lat": 39.919426,
+						"count": 42
+					},
+					{
+						"lng": 116.421107,
+						"lat": 39.916445,
+						"count": 4
+					},
+					{
+						"lng": 116.417521,
+						"lat": 39.917943,
+						"count": 27
+					},
+					{
+						"lng": 116.419812,
+						"lat": 39.920836,
+						"count": 23
+					},
+					{
+						"lng": 116.420682,
+						"lat": 39.91463,
+						"count": 60
+					},
+					{
+						"lng": 116.415424,
+						"lat": 39.924675,
+						"count": 8
+					},
+					{
+						"lng": 116.419242,
+						"lat": 39.914509,
+						"count": 15
+					},
+					{
+						"lng": 116.422766,
+						"lat": 39.921408,
+						"count": 25
+					},
+					{
+						"lng": 116.421674,
+						"lat": 39.924396,
+						"count": 21
+					},
+					{
+						"lng": 116.427268,
+						"lat": 39.92267,
+						"count": 1
+					},
+					{
+						"lng": 116.417721,
+						"lat": 39.920034,
+						"count": 51
+					},
+					{
+						"lng": 116.412456,
+						"lat": 39.92667,
+						"count": 7
+					},
+					{
+						"lng": 116.420432,
+						"lat": 39.919114,
+						"count": 11
+					},
+					{
+						"lng": 116.425013,
+						"lat": 39.921611,
+						"count": 35
+					},
+					{
+						"lng": 116.418733,
+						"lat": 39.931037,
+						"count": 22
+					},
+					{
+						"lng": 116.419336,
+						"lat": 39.931134,
+						"count": 4
+					},
+					{
+						"lng": 116.413557,
+						"lat": 39.923254,
+						"count": 5
+					},
+					{
+						"lng": 116.418367,
+						"lat": 39.92943,
+						"count": 3
+					},
+					{
+						"lng": 116.424312,
+						"lat": 39.919621,
+						"count": 100
+					},
+					{
+						"lng": 116.423874,
+						"lat": 39.919447,
+						"count": 87
+					},
+					{
+						"lng": 116.424225,
+						"lat": 39.923091,
+						"count": 32
+					},
+					{
+						"lng": 116.417801,
+						"lat": 39.921854,
+						"count": 44
+					},
+					{
+						"lng": 116.417129,
+						"lat": 39.928227,
+						"count": 21
+					},
+					{
+						"lng": 116.426426,
+						"lat": 39.922286,
+						"count": 80
+					},
+					{
+						"lng": 116.421597,
+						"lat": 39.91948,
+						"count": 32
+					},
+					{
+						"lng": 116.423895,
+						"lat": 39.920787,
+						"count": 26
+					},
+					{
+						"lng": 116.423563,
+						"lat": 39.921197,
+						"count": 17
+					},
+					{
+						"lng": 116.417982,
+						"lat": 39.922547,
+						"count": 17
+					},
+					{
+						"lng": 116.426126,
+						"lat": 39.921938,
+						"count": 25
+					},
+					{
+						"lng": 116.42326,
+						"lat": 39.915782,
+						"count": 100
+					},
+					{
+						"lng": 116.419239,
+						"lat": 39.916759,
+						"count": 39
+					},
+					{
+						"lng": 116.417185,
+						"lat": 39.929123,
+						"count": 11
+					},
+					{
+						"lng": 116.417237,
+						"lat": 39.927518,
+						"count": 9
+					},
+					{
+						"lng": 116.417784,
+						"lat": 39.915754,
+						"count": 47
+					},
+					{
+						"lng": 116.420193,
+						"lat": 39.917061,
+						"count": 52
+					},
+					{
+						"lng": 116.422735,
+						"lat": 39.915619,
+						"count": 100
+					},
+					{
+						"lng": 116.418495,
+						"lat": 39.915958,
+						"count": 46
+					},
+					{
+						"lng": 116.416292,
+						"lat": 39.931166,
+						"count": 9
+					},
+					{
+						"lng": 116.419916,
+						"lat": 39.924055,
+						"count": 8
+					},
+					{
+						"lng": 116.42189,
+						"lat": 39.921308,
+						"count": 11
+					},
+					{
+						"lng": 116.413765,
+						"lat": 39.929376,
+						"count": 3
+					},
+					{
+						"lng": 116.418232,
+						"lat": 39.920348,
+						"count": 50
+					},
+					{
+						"lng": 116.417554,
+						"lat": 39.930511,
+						"count": 15
+					},
+					{
+						"lng": 116.418568,
+						"lat": 39.918161,
+						"count": 23
+					},
+					{
+						"lng": 116.413461,
+						"lat": 39.926306,
+						"count": 3
+					},
+					{
+						"lng": 116.42232,
+						"lat": 39.92161,
+						"count": 13
+					},
+					{
+						"lng": 116.4174,
+						"lat": 39.928616,
+						"count": 6
+					},
+					{
+						"lng": 116.424679,
+						"lat": 39.915499,
+						"count": 21
+					},
+					{
+						"lng": 116.42171,
+						"lat": 39.915738,
+						"count": 29
+					},
+					{
+						"lng": 116.417836,
+						"lat": 39.916998,
+						"count": 99
+					},
+					{
+						"lng": 116.420755,
+						"lat": 39.928001,
+						"count": 10
+					},
+					{
+						"lng": 116.414077,
+						"lat": 39.930655,
+						"count": 14
+					},
+					{
+						"lng": 116.426092,
+						"lat": 39.922995,
+						"count": 16
+					},
+					{
+						"lng": 116.41535,
+						"lat": 39.931054,
+						"count": 15
+					},
+					{
+						"lng": 116.413022,
+						"lat": 39.921895,
+						"count": 13
+					},
+					{
+						"lng": 116.415551,
+						"lat": 39.913373,
+						"count": 17
+					},
+					{
+						"lng": 116.421191,
+						"lat": 39.926572,
+						"count": 1
+					},
+					{
+						"lng": 116.419612,
+						"lat": 39.917119,
+						"count": 9
+					},
+					{
+						"lng": 116.418237,
+						"lat": 39.921337,
+						"count": 54
+					},
+					{
+						"lng": 116.423776,
+						"lat": 39.921919,
+						"count": 26
+					},
+					{
+						"lng": 116.417694,
+						"lat": 39.92536,
+						"count": 17
+					},
+					{
+						"lng": 116.415377,
+						"lat": 39.914137,
+						"count": 19
+					},
+					{
+						"lng": 116.417434,
+						"lat": 39.914394,
+						"count": 43
+					},
+					{
+						"lng": 116.42588,
+						"lat": 39.922622,
+						"count": 27
+					},
+					{
+						"lng": 116.418345,
+						"lat": 39.919467,
+						"count": 8
+					},
+					{
+						"lng": 116.426883,
+						"lat": 39.917171,
+						"count": 3
+					},
+					{
+						"lng": 116.423877,
+						"lat": 39.916659,
+						"count": 34
+					},
+					{
+						"lng": 116.415712,
+						"lat": 39.915613,
+						"count": 14
+					},
+					{
+						"lng": 116.419869,
+						"lat": 39.931416,
+						"count": 12
+					},
+					{
+						"lng": 116.416956,
+						"lat": 39.925377,
+						"count": 11
+					},
+					{
+						"lng": 116.42066,
+						"lat": 39.925017,
+						"count": 38
+					},
+					{
+						"lng": 116.416244,
+						"lat": 39.920215,
+						"count": 91
+					},
+					{
+						"lng": 116.41929,
+						"lat": 39.915908,
+						"count": 54
+					},
+					{
+						"lng": 116.422116,
+						"lat": 39.919658,
+						"count": 21
+					},
+					{
+						"lng": 116.4183,
+						"lat": 39.925015,
+						"count": 15
+					},
+					{
+						"lng": 116.421969,
+						"lat": 39.913527,
+						"count": 3
+					},
+					{
+						"lng": 116.422936,
+						"lat": 39.921854,
+						"count": 24
+					},
+					{
+						"lng": 116.41905,
+						"lat": 39.929217,
+						"count": 12
+					},
+					{
+						"lng": 116.424579,
+						"lat": 39.914987,
+						"count": 57
+					},
+					{
+						"lng": 116.42076,
+						"lat": 39.915251,
+						"count": 70
+					},
+					{
+						"lng": 116.425867,
+						"lat": 39.918989,
+						"count": 8
+					}
+				];
+
+				if (!isSupportCanvas()) {
+					alert('热力图目前只支持有canvas支持的浏览器,您所使用的浏览器不能使用热力图功能~')
+				}
+				//详细的参数,可以查看heatmap.js的文档 https://github.com/pa7/heatmap.js/blob/master/README.md
+				//参数说明如下:
+				/* visible 热力图是否显示,默认为true
+     * opacity 热力的透明度,1-100
+     * radius 势力图的每个点的半径大小   
+     * gradient  {JSON} 热力图的渐变区间 . gradient如下所示
+     *	{
+			.2:'rgb(0, 255, 255)',
+			.5:'rgb(0, 110, 255)',
+			.8:'rgb(100, 0, 255)'
+		}
+		其中 key 表示插值的位置, 0~1. 
+		    value 为颜色值. 
+     */
+				heatmapOverlay = new BMapLib.HeatmapOverlay({
+					"radius": 20
+				});
+				map.addOverlay(heatmapOverlay);
+				heatmapOverlay.setDataSet({
+					data: points,
+					max: 100
+				});
+				//是否显示热力图
+				function openHeatmap() {
+					heatmapOverlay.show();
+				}
+
+				function closeHeatmap() {
+					heatmapOverlay.hide();
+				}
+				closeHeatmap();
+
+				function setGradient() {
+					/*格式如下所示:
+		{
+	  		0:'rgb(102, 255, 0)',
+	 	 	.5:'rgb(255, 170, 0)',
+		  	1:'rgb(255, 0, 0)'
+		}*/
+					var gradient = {};
+					var colors = document.querySelectorAll("input[type='color']");
+					colors = [].slice.call(colors, 0);
+					colors.forEach(function(ele) {
+						gradient[ele.getAttribute("data-key")] = ele.value;
+					});
+					heatmapOverlay.setOptions({
+						"gradient": gradient
+					});
+				}
+				//判断浏览区是否支持canvas
+				function isSupportCanvas() {
+					var elem = document.createElement('canvas');
+					return !!(elem.getContext && elem.getContext('2d'));
+				}
+			</script>
+		</div>
+	</body>
 </html>

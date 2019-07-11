@@ -7,7 +7,7 @@ import time
 但是这里强行使用sqlite3，不管了，哪个叫他是内置的呢？！
 '''
 
-db_name = 'mydb.db'
+db_name = 'com4016.db'
 
 
 def create_db():
@@ -16,8 +16,8 @@ def create_db():
     c = conn.cursor()
 
     # 创建表 
-    c.execute('''DROP TABLE IF EXISTS cpu''') # 删除旧表，如果存在（因为这是临时数据）
-    c.execute('''CREATE TABLE cpu (id INTEGER PRIMARY KEY AUTOINCREMENT, insert_time text,cpu1 float, cpu2 float, cpu3 float, cpu4 float)''')
+    c.execute('''DROP TABLE IF EXISTS com4016''') # 删除旧表，如果存在（因为这是临时数据）
+    c.execute('''CREATE TABLE com4016 (id INTEGER PRIMARY KEY AUTOINCREMENT, port text,insert_time text,device text, step int, valuec float, absval float)''')
 
     # 关闭
     conn.close()
@@ -30,7 +30,7 @@ def save_to_db(data):
     c = conn.cursor()
     
     # 插入数据
-    c.execute('INSERT INTO cpu(insert_time,cpu1,cpu2,cpu3,cpu4) VALUES (?,?,?,?,?)', data)
+    c.execute('INSERT INTO com4016(port,insert_time,device,step,value,abs) VALUES (?,?,?,?,?, ?)', data)
     
     # 提交！！！
     conn.commit()
@@ -52,4 +52,4 @@ while True:
     t = time.strftime('%M:%S', time.localtime())
     
     # 保存到数据库
-    save_to_db((t, *cpus))
+    #save_to_db((t, *cpus))

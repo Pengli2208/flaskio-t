@@ -17,12 +17,45 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode=async_mode)
 thread = None
 thread_lock = Lock()
+db_name = '/home/pi/flask/Flask-SocketIO/example/com4016.db'
+
+
+def create_db():
+    # 连接
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    # 创建表 
+    c.execute('''DROP TABLE IF EXISTS TB4016''') # 删除旧表，如果存在（因为这是临时数据）
+    c.execute('''CREATE TABLE TB4016 (id INTEGER PRIMARY KEY AUTOINCREMENT, port text,insert_time text,device text, step int, valuec float, absval float)''')
+
+    # 关闭
+    conn.close()
 
 def get_db():
-    db = sqlite3.connect('mydb.db')
+    db = sqlite3.connect(db_name)
     db.row_factory = sqlite3.Row
     return db
 
+
+def save_to_db(room, data):
+    '''参数data格式：['00:01',3.5, 5.9, 0.7, 29.6]'''
+    # 建立连接
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    strsql = "CREATE TABLE IF not exists TB" + room +"  (id INTEGER PRIMARY KEY AUTOINCREMENT, port text,insert_time text,device text, step int, valuec float, absval float)"
+    print(strsql)
+    c.execute(strsql)
+    sqlStr = "INSERT INTO TB" + room +"(port,insert_time,device,step,valuec,absval) VALUES (?,?,?,?,?,?)"
+    # 插入数据
+    print(sqlStr)
+    c.execute(sqlStr, data)
+    
+    # 提交！！！
+    conn.commit()
+    
+    # 关闭连接
+    conn.close()
 
 def query_db(query, args=(), one=False):
     db = get_db()
@@ -50,22 +83,25 @@ def PyHtml(content):
 def index():
     return render_template('index.html', async_mode=socketio.async_mode)
 
-@app.route("/cpu", methods=["POST"])
-def cpu():
+@app.route("/concentration", methods=["POST"])
+def get_concentration():
     if request.method == "POST":
-        id1 = query_db("SELECT MAX(id) FROM cpu", args=())
+        id1 = query_db("SELECT MAX(id) FROM TB4016", args=())
         reqId = 0
-        if int(id1[0][0]) < 30:
-            reqId = int(request.form['id'])
-        else:
-            reqId = int(id1[0][0]) - 30
-        res = query_db("SELECT * FROM cpu WHERE id>=(?)", args=(reqId+1,))
-        #返回1+个数据    
-    return jsonify(insert_time = [x[1] for x in res],
-                   cpu1 = [x[2] for x in res],
-                   cpu2 = [x[3] for x in res], 
-                   cpu3 = [x[4] for x in res],
-                   cpu4 = [x[5] for x in res])
+        try:
+            if int(id1[0][0]) < 30:
+                reqId = int(request.form['id'])
+            else:
+                reqId = int(id1[0][0]) - 30
+            res = query_db("SELECT * FROM TB4016 WHERE id>=(?)", args=(reqId+1,))
+            return jsonify(insert_time = [x[2] for x in res],
+                   concentration = [x[5] for x in res],
+                   detail = [x[1] for x in res] + [x[3] for x in res] + [x[4] for x in res])
+        
+        except Exception as e:
+            print('error', repr(e))
+            pass
+        return jsonify(insert_time="0:0", concentration=[0.0,0.0], detail="0,0,0,")
     # 返回json格式
 
 
@@ -103,12 +139,18 @@ def join(message):
 @socketio.on('leave', namespace='/test')
 def leave(message):
     leave_room(message['room'])
-    session['receive_count'] = session.get('receive_count', 0) + 1
+    #session['receive_count'] = session.get('receive_count', 0) + 1
+    
+@socketio.on('leaveall', namespace='/test')
+def leaveall(message):
     emit('my_response',
-         {'data': 'In rooms: ' + ', '.join(rooms()),
+         {'data': 'Leave rooms: ' + ', '.join(rooms())+'\n',
           'count': session['receive_count'], 
-          'response':PyHtml('In rooms: ' + ', '.join(rooms())),
-	  'port':message['room']})
+          'response':PyHtml('Leave rooms: ' + ', '.join(rooms())),
+	  'port':"FFFF"})
+    for ro in rooms():
+        leave_room(ro)
+        print("leave ",	ro) 
 
 
 @socketio.on('close_room', namespace='/test')
@@ -133,6 +175,17 @@ def send_room_message1(message):
          room=message['room'])
 
 
+
+@socketio.on('my_sql_event', namespace='/test')
+def send_room_message2(message):
+    #session['receive_count'] = session.get('receive_count', 0) + 1
+    print('sql message:', message['data'])
+    sqlData = message['data'].split(',')
+    print('sql message:', sqlData)
+    room=message['room']
+    save_to_db(room,sqlData)
+
+
 @socketio.on('my_send_event', namespace='/test')
 def send_room_message(message):
     #session['receive_count'] = session.get('receive_count', 0) + 1
@@ -154,7 +207,7 @@ def disconnect_request():
     # when the callback function is invoked we know that the message has been
     # received and it is safe to disconnect
     emit('my_response',
-         {'data': 'Disconnected!', 
+         {'data': 'Disconnected!\n', 
 	  'count': session['receive_count'],
           'response':PyHtml('Disconnected'),
 	  'port':message['room']},
@@ -177,7 +230,7 @@ def test_connect():
 
 @socketio.on('disconnect', namespace='/test')
 def test_disconnect():
-    print('Client disconnected', request.sid)
+    print('Client disconnected\n', request.sid)
 
 
 
